@@ -115,7 +115,16 @@ set.seed(124)
 sample_space <- 1:6
 ```
 
-We will create a simulation function that draws repeated random samples from the population and calculates the sample mean for each. 
+Finally, let's discard the original data entirely and move to a purely simulation based approach. To mimic the dice roll, sample again from a uniform distribution ($a = 1$, $b = 6$). First, set up the sample space (the possible outcomes): 
+
+```{r}
+set.seed(124)
+
+sample_space <- 1:6
+```
+
+
+We will create a simulation function that draws repeated random samples from the population and calculates the sample mean for each. We’ll run the simulation with different numbers of repetitions: 5 (as you have done in the lecture), 100, 1000, and 10000. The shape of the histogram becomes more bell-shaped as we increase simulations.
 
 ```{r}
 simulate_means <- function(pop, n_sims, sample_size = 30) {
@@ -123,16 +132,69 @@ simulate_means <- function(pop, n_sims, sample_size = 30) {
 }
 ```
 
-Now, run the simulation with the following combinations of inputs (16 total): 
 
-- n_sims, the number of samples: 5, 100, 1000, 10000
-- sample_size, the number of rolls per sample: 5, 10, 30, 100
+Let us plot it for 5 simulations:
+```{r}
+hist(simulate_means(population, 5),
+     main = "Sampling Distribution of Dice Roll Means (n = 30), 5 Simulations",
+     col = "lightblue", breaks = 30,
+     xlab = "Sample Mean",)
+````
 
-And visualise the results as a 4 x 4 plot of histograms (16 total histograms).
+
+For 100:
+```{r}
+hist(simulate_means(population, 100),
+     main = "Sampling Distribution of Dice Roll Means (n = 30),  100 Simulations",
+     col = "lightgreen", breaks = 30, 
+     xlab = "Sample Mean", ylab = "Frequency")
+
+```
+
+
+1000:
+```{r}
+hist(simulate_means(population, 1000),
+     main = "Sampling Distribution of Dice Roll Means (n = 30), 1000 Simulations",
+     col = "lightcoral", breaks = 30, 
+     xlab = "Sample Mean", ylab = "Frequency")
+````
+
+
+10000:
 
 ```{r}
-# Your code goes here
+hist(simulate_means(population, 10000),
+     main = "Sampling Distribution of Dice Roll Means (n = 30),  10000 Simulations",
+     col = "gold", breaks = 40, 
+     xlab = "Sample Mean", ylab = "Frequency")
+
 ```
+
+Now, let us look at all of them together:
+```{r}
+par(mfrow = c(2, 2))  # Set up 2x2 plotting grid
+
+hist(simulate_means(population, 5),
+     main = "Distribution of Sample Means (10 Simulations)", 
+     col = "lightblue", breaks = 30, 
+     xlab = "Sample Mean", ylab = "Frequency")
+
+hist(simulate_means(population, 100),
+     main = "Distribution of Sample Means (100 Simulations)", 
+     col = "lightgreen", breaks = 30, 
+     xlab = "Sample Mean", ylab = "Frequency")
+
+hist(simulate_means(population, 1000),
+     main = "Distribution of Sample Means (1000 Simulations)", 
+     col = "lightcoral", breaks = 30, 
+     xlab = "Sample Mean", ylab = "Frequency")
+
+hist(simulate_means(population, 10000),
+     main = "Distribution of Sample Means (10000 Simulations)", 
+     col = "gold", breaks = 30, 
+     xlab = "Sample Mean", ylab = "Frequency")
+````
 
 #### 3. Exercise
 
