@@ -1,0 +1,440 @@
+---
+title: "Seminar 3: Introduction to Data II"
+subtitle: "LSE ME314: Introduction to Data Science and Machine Learning"
+date-modified: "16 July 2025" 
+toc: true
+format: html
+execute:
+  echo: true
+  eval: false
+---
+
+## Plan for Today: 
+
+We will learn to **simulate data** that looks like real-world phenomena, then **visualize** it to understand patterns. Think of this as becoming a "data generator" - you'll create fake datasets that behave like real ones.
+
+----
+
+### Set Up:
+
+In the VS Code terminal, install `matplotlib` and `seaborn` which you will need for visualization in this seminar.
+
+```{bash, eval=FALSE}
+which python
+pip install --user matplotlib seaborn
+```
+
+
+Then, set up reticulate by specifying the path to the Python interpreter you want to use.
+
+```{r, warning=FALSE, message=FALSE}
+library(reticulate)
+use_python("/YOUR/PATH/TO/PYTHON", required = TRUE) # use base Python installation
+
+#py_config()
+set.seed(42)  # For reproducible results
+```
+
+
+Run the code chunk below and install the ggplot2 package. You will be asked to select a CRAN mirror which should pop up as a separate window or below in your R terminal. Select the one in UK:London.
+
+```{r}
+install.packages("ggplot2")
+```
+
+
+⁠We will be working with a lot of plots in today's seminar. If you are unsatisfied with how the plot is rendered (e.g. elements too small) you can install the `httpgd` package, which displays the plots much better.
+
+```{r}
+remotes::install_github("nx10/httpgd")
+```
+
+
+Then, navigate to the VSCode setting (Cmd + ,) and search for "httpgd". Check the box for the "Use Httpgd" setting. Then restart VScode.
+
+
+## Part I: Probability Distributions
+
+What is a **probability distribution**?
+
+A probability distribution is a mathematical function that describes the likelihood of different outcomes for a random variable. In other words, it tells us how probable it is to observe particular values.
+
+To make this more tangible, let’s consider a few real-life examples:
+
+- The height of university students
+
+- The grades received on a final exam
+
+- The number of heads in a series of coin tosses
+
+Each of these can be modeled with a different type of probability distribution.
+
+Before we can fully understand how data behaves in practice, it’s important to grasp two foundational ideas in probability and statistics: the Law of Large Numbers and the Central Limit Theorem. These concepts help explain why sample data can reliably reflect population patterns — and why normal distributions appear so often, even when the original data is not normal.
+
+#### Law of Large Numbers
+
+The Law of Large Numbers helps us understand how data behaves as we collect more of it. It states that as the sample size increases, the sample mean will tend to get closer to the true population mean.
+
+This is why we trust averages more when they're based on large samples.
+
+#### 1. Exercise
+
+In class we created some data based on rolling Daniel's six-sided dice. Ingest that data into `R` as an object, then, using all the rolls, test whether the dice are "fair" (does the mean of all the rolls approximately equal the expected value of a uniform distribution with a = 1 and b = 6?).
+
+```{r}
+# Your code goes here
+```
+
+#### Central Limit Theorem:
+
+The central limit theorem states that, with a sufficiently large sample size, the sampling distribution of the mean will be normally distributed, regardless of the population’s distribution. 
+
+#### 2. Exercise
+
+Now, we will show you how the Central Limit Theorem works using the dice rolls we gathered in class, plus a simulation. 
+
+First, treating each row of the dice roll data as a "sample" ($n = 5$), visualise the sampling distribution. That is, calculate the row-wise means, and plot a histogram of those means.
+
+```{r}
+# Your code goes here
+```
+
+You might notice that the distribution is quite far from the promised normality of the CLT. This is because we only have $n=5$ per sample. 
+
+Using the same data object, use `R` to simulate many more rolls per sample. That is, create 30 new columns, each of which represents an additional roll (`Sixth roll`, `Seventh roll`,..., `Thirty fifth roll`). Each of those rolls should be drawn i.i.d from a uniform distribution with a = 1 and b = 6. Then, as before, calculate the row-wise means of those new columns and plot a histogram of those means. What do you find? 
+
+```{r}
+# Your code goes here
+```
+
+Finally, let's discard the original data entirely and move to a purely simulation based approach. To mimic the dice roll, sample again from a uniform distribution ($a = 1$, $b = 6$). First, set up the sample space (the possible outcomes): 
+
+```{r}
+set.seed(124)
+
+sample_space <- 1:6
+```
+
+We will create a simulation function that draws repeated random samples from the population and calculates the sample mean for each. 
+
+```{r}
+simulate_means <- function(pop, n_sims, sample_size = 30) {
+  replicate(n_sims, mean(sample(pop, sample_size, replace = TRUE)))
+}
+```
+
+Now, run the simulation with the following combinations of inputs (16 total): 
+
+- n_sims, the number of samples: 5, 100, 1000, 10000
+- sample_size, the number of rolls per sample: 5, 10, 30, 100
+
+And visualise the results as a 4 x 4 plot of histograms (16 total histograms).
+
+```{r}
+# Your code goes here
+```
+
+#### 3. Exercise
+
+__Interpret these results:__
+
+How does the sample size affect the spread of the means?
+Why does this matter for real-world statistics like polling or experiments?
+
+### Discrete vs. Continuous Distributions:
+
+| **Aspect**| **Continuous Data**| **Discrete Data** |
+|-----------|--------------------|-------------------|
+| **Definition**| Can take **any value** within a range (finite or infinite), e.g. height, income, age | Can take **specific values only**, e.g. dice roll outcomes (1, 2, 3, …) |
+| **Probability Function** | **PDF (Probability Density Function)**: describes the **density** of values, not exact probabilities | **PMF (Probability Mass Function)**: assigns a **specific probability** to each discrete outcome  
+| **Interpretation** | Single point probabilities are **zero**: $P(X = 2) = 0$; but interval probabilities are positive: $P(1.9 < X < 2.1) > 0$ | Probability is **concentrated at points**: $P(X = 2) = 0.25$ 
+| **Why “Density”/“Mass”?** | "Density" means probability is **spread over an interval**; total area under the curve equals 1 |"Mass" refers to **discrete chunks of probability** assigned to exact values (e.g., $P(X = x)$)|
+
+### Continuous Distributions
+
+#### Gaussian Normal Distribution
+
+The normal distribution is the most common distribution in our world. We can see it in heights, test scores, measurement errors. It's symmetric and bell-shaped.
+
+- Key Parameters: 
+  - Mean: $\mu$ 
+  - Variance: $\sigma^2$ 
+- Standard Normal Distribution has a $\mu$ = 0 and a $\sigma^2$= 1.
+
+#### 4. Exercise
+
+Let's simulate the heights of 200 university students. Use `rnorm()` to generate the data and call it 'heights'. For the parameters use 170cm as the mean, 10cm as the standard deviation and n = 200. Then look at the first values using `head()`.
+
+```{r}
+# your code goes here
+```
+
+
+Let us inspect the summary statistics: what do they show us?
+
+```{r}
+# Basic statistics
+summary(heights)
+```
+
+
+Now, let us plot the distribution of values using a histogram.
+
+```{r}
+hist(heights)
+```
+
+
+### Discrete Distributions
+
+Bernoulli Distribution: A Bernoulli distribution has only two possible outcomes, namely 1 (success) and 0 (failure), and a single trial. It is thus a special case of the binomial distribution.
+
+- Parameter: p (probability of success)
+
+Imagine you play one round of black-jack with a probability of 0.5 for success. Let's draw a random probability of you betting on the right color.
+
+```{r}
+rbinom(1, size=1, prob=0.5)  # R uses binomial with size=1 for Bernoulli 
+```
+
+
+#### Binomial Distribution
+
+The binomial distribution models the outcome of a series of independent Bernoulli trials (coin flips), where each trial has two possible outcomes: heads (with probability $p$) or tails (with probability $1-p$). 
+
+- $n$ independent Bernoulli trials
+- Counts how many successes occur in those $n$ trials
+- Parameters: $n$ (number of trials), $p$ (probability of success)
+
+#### 5. Exercise
+
+Now, let's imagine a COVID test that correctly detects the virus (success) 90% of the time. You test 10 people independently who all have COVID.
+
+So, we have n= 1 and size = 10; where n = the number of values to generate, size = the number of trials (i.e. here the number of people we test) and p = the probability of success (i.e. the test detects the virus).
+
+```{r}
+samples <- rbinom(1, size=10, prob=0.9)
+print(samples)
+```
+
+
+::: {.callout-note}
+Attention: In `rbinom(n, size, prob)`, the size parameter = number of trials, prob = probability and n = is just the parameter saying how many numbers you want to generate. Thus, in mathematical notation $ Binomial(n = 10,p = 0.6)$, would be `rbinom(n=1, size=10, p = 0.6)
+:::
+
+In the exercise before, those 10 people only came to one test center, but in real life there were 1000 test centers all over London. So, we change the number of test centers from 1 to 1000 and run the same again. Then use `hist()`to plot the histogram of the distribution.
+
+```{r}
+# your code goes here
+```
+
+
+What can we see from this distribution?
+
+#### 6. Exercise
+
+A basketball player makes 70% of free throws. Let's simulate 50 games where they shoot 10 free throws each:
+
+Step 1: Create the following variables:
+
+- games: the number of games played
+- shots_per_game: how many free throws are taken per game
+- success_rate: the probability of making a free throw
+
+Use these variables as parameters in the `rbinom()` function to simulate free throw outcomes.
+Store the results in a new object called free_throws, and print the first few values using `head()`.
+
+```{r}
+# your code goes here
+```
+
+
+Now that you’ve simulated the number of successful free throws, it’s time to organize the data. 
+
+Step 2: Create a new data frame called ft_data with two columns:
+
+- game: a sequence from 1 to the number of games
+- makes: the number of successful free throws in each game (from your free_throws object)
+
+Use the data.frame() function and assign the result to ft_data.
+
+```{r}
+# your code goes here
+```
+
+
+## Part II: Data Visualization
+
+#### What is visualization?
+
+A visualisation is a **mapping** of **data** to **aesthetics** via visual **geometries** to produce meaning. Formally this can be represented as a "**grammar of graphics**" (Wilkinson, 2005). 
+
+
+#### What is ggplot2? 
+
+ggplot2 is Hadley Wickham’s R package for producing “elegant graphics for data analysis” which is based on Lee Wilkinson's Grammar of Graphics.
+
+In `{ggplot2}`, three key pieces:
+
+1. **Data**: The information
+   
+2. **Mapping**: Correspondence between data and aesthetics
+   
+3. **Layers**: Geometry and transformation
+
+Then we get:
+
+- Scales: Paired to an aesthetic
+  
+- Facets: Subsets of data 
+  
+- Coordinates: The x-y system of the canvas
+  
+- Theme: Design choices
+
+
+![(Source: [https://ggplot2.tidyverse.org/articles/ggplot2.html](https://ggplot2.tidyverse.org/articles/ggplot2.html))](figs/overview_graphic.png)
+
+Now, use the data you generated for exercise 3 and plot it using ggplot: We will first generate a simple barplot using geom_bar().
+
+```{r}
+library(ggplot2)
+# Bar plot of results
+simple_plot <- ggplot(data = ft_data, aes(x = as.factor(makes))) +
+  geom_bar()
+
+simple_plot
+```
+
+
+Let us add another mapping: we will change the color of the bars and their intensity using `fill`and `alpha`. 
+
+```{r}
+# now let us add some aesthetics: we will change the color of the bars and their intensity
+
+simple_plot_colors <- ggplot(data = ft_data, aes(x = as.factor(makes))) +
+  geom_bar(fill= "orange", alpha = 0.7)
+
+simple_plot_colors
+```
+
+
+Now we can add a theme, a title and change the X and Y axis labels:
+
+```{r}
+# now we can add a title and change the X and Y axis labels:
+
+simple_plot_colors + labs(title = "Free Throws Made per Game (10 attempts, 70% shooter)",
+                          x = "Number Made",
+                          y = "Number of Games") + theme_bw()
+```
+
+
+Now, we will generate some continuous data for a dataset and plot it.
+
+```{r}
+## Generate some data:
+set.seed(123)
+
+# Simulate continuous variable
+X <- rnorm(500, mean = 0, sd = 1)
+
+# Simulate group variable (3 categories)
+Z <- factor(sample(1:3, 500, replace = TRUE))
+
+# Generate Y with group-specific slopes
+Y <- ifelse(Z == 1, 0.2 * X + rnorm(500, 0, 0.2),
+     ifelse(Z == 2, 0.4 * X + rnorm(500, 0, 0.2),
+                    0.6 * X + rnorm(500, 0, 0.2)))
+
+# Combine into data frame
+plot_dta <- data.frame(X = X, Y = Y, Z = Z)
+
+```
+
+
+#### 7. Exercise
+
+Use ggplot() to plot the simulated dataset called 'plot_data'. Create a scatter plot using geom_point() and assign the plot to a new object called simple_plot2. Map the variable Z to the color aesthetic. Set the transparency of the points using alpha = 0.75
+
+You'll need to use aes() inside ggplot() to map variables to aesthetics.
+
+```{r}
+# your code goes here
+```
+
+
+We will add another layer using geom_smooth() to visualize trends in the data. By default, geom_smooth() fits a smooth curve using LOESS, but we can also specify a linear model to plot a straight trend line across the data points using `method = lm`. In our case we want t specify a linear model. Call the new object simple_plot2_line.
+
+```{r}
+# your code goes here
+```
+
+
+Now we will add a theme, a title and change the X and Y axis labels:
+
+```{r}
+
+```
+
+
+#### Python:
+
+In Python, we use `numpy.random` for random sampling of distribution. For binomial distributions, the syntax is similar to R rbinom(): `np.random.binomial(n, p, size)`. The only difference is that `n` in this code defines the number of trials and size the number of values to be generated. 
+
+#### 8. Exercise
+
+Use `np.random.binomial()`to simulate 1000 games with 10 throws and a probability of success of 0.6 and call the object 'samples'. 
+
+```{python}
+import numpy as np
+
+# your code goes here
+
+```
+
+
+In Python, we use Matplotlib for plotting:
+
+```{python}
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+plt.hist(samples, bins=range(0, 12), color='lightblue', edgecolor='black', align='left')
+plt.title("Binomial Distribution (n = 10, p = 0.6)")
+plt.xlabel("Number of Successes")
+plt.ylabel("Frequency")
+plt.xticks(range(0, 11))
+plt.show()
+
+```
+
+For the normal distribution, we can use `np.random.normal(loc, scale, size)`, where loc = mean, scale = standard deviation and size = the output shape. 
+
+```{python}
+mu, sigma = 0, 0.1 # mean and standard deviation
+samples_normal = np.random.normal(mu, sigma, 1000)
+
+sns.histplot(samples_normal, bins=30, kde=True, edgecolor='black')
+plt.title("Gaussian Normal Distribution")
+plt.xlabel('')
+plt.ylabel('')
+plt.show()
+```
+
+
+## By the end of this seminar you should be able to…
+
+- Generate your own data using different types of probability distributions (e.g. normal, binomial, uniform)
+
+- Simulate random variation and understand how it affects data
+
+- Explain key concepts like the Law of Large Numbers and the Central Limit Theorem
+
+- Visualize distributions and simulations using ggplot2 in R and matplotlib in Python
+
+- Interpret histograms, density plots, and sampling distributions
+
+- Understand how sample size affects the reliability of estimates
+
+
