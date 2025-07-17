@@ -246,7 +246,27 @@ hist(simulate_means(population, 10000),
 __Interpret these results:__
 
 How does the sample size affect the spread of the means?
+
+:::{.callout-tip title= "Answer" collapse="true" }
+As the **sample size increases**, the **spread (or variability)** of the sample means **decreases**. 
+In statistical terms, the **standard error of the mean** is inversely proportional to the square root of the sample size:
+
+$\text{Standard Error} = \frac{\sigma}{\sqrt{n}}$
+
+This means that with larger samples, the sample means are more tightly clustered around the population mean — resulting in **more precise estimates**.
+:::
+
 Why does this matter for real-world statistics like polling or experiments?
+
+:::{.callout-tip title= "Answer" collapse="true" }
+Because it means we can **trust our sample estimates more** when we use larger samples.
+
+- In **polling**, a larger sample leads to **narrower confidence intervals**, meaning more accurate estimates of public opinion.
+  
+- In **experiments**, larger samples reduce the influence of random noise and help detect **true effects** if they exist.
+  
+- In general, it improves the **reliability and reproducibility** of our statistical conclusions.
+:::
 
 ### Discrete vs. Continuous Distributions:
 
