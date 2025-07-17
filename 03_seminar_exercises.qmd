@@ -29,7 +29,7 @@ Then, set up reticulate by specifying the path to the Python interpreter you wan
 
 ```{r, warning=FALSE, message=FALSE}
 library(reticulate)
-use_python("/YOUR/PATH/TO/PYTHON", required = TRUE) # use base Python installation
+use_python("/Users/charlottekuberka/anaconda3/envs/ox/bin/python", required = TRUE) # use base Python installation
 
 #py_config()
 set.seed(42)  # For reproducible results
@@ -82,12 +82,14 @@ This is why we trust averages more when they're based on large samples.
 In class we created some data based on rolling Daniel's six-sided dice. Ingest that data into `R` as an object, then, using all the rolls, test whether the dice are "fair" (does the mean of all the rolls approximately equal the expected value of a uniform distribution with a = 1 and b = 6?).
 
 ```{r}
-# Your code goes here
+# your code goes here
 ```
+
 
 #### Central Limit Theorem:
 
 The central limit theorem states that, with a sufficiently large sample size, the sampling distribution of the mean will be normally distributed, regardless of the population’s distribution. 
+
 
 #### 2. Exercise
 
@@ -111,15 +113,6 @@ Finally, let's discard the original data entirely and move to a purely simulatio
 
 ```{r}
 set.seed(124)
-
-sample_space <- 1:6
-```
-
-Finally, let's discard the original data entirely and move to a purely simulation based approach. To mimic the dice roll, sample again from a uniform distribution ($a = 1$, $b = 6$). First, set up the sample space (the possible outcomes): 
-
-```{r}
-set.seed(124)
-
 sample_space <- 1:6
 ```
 
@@ -135,7 +128,7 @@ simulate_means <- function(pop, n_sims, sample_size = 30) {
 
 Let us plot it for 5 simulations:
 ```{r}
-hist(simulate_means(population, 5),
+hist(simulate_means(sample_space, 5),
      main = "Sampling Distribution of Dice Roll Means (n = 30), 5 Simulations",
      col = "lightblue", breaks = 30,
      xlab = "Sample Mean",)
@@ -144,7 +137,7 @@ hist(simulate_means(population, 5),
 
 For 100:
 ```{r}
-hist(simulate_means(population, 100),
+hist(simulate_means(sample_space, 100),
      main = "Sampling Distribution of Dice Roll Means (n = 30),  100 Simulations",
      col = "lightgreen", breaks = 30, 
      xlab = "Sample Mean", ylab = "Frequency")
@@ -154,7 +147,7 @@ hist(simulate_means(population, 100),
 
 1000:
 ```{r}
-hist(simulate_means(population, 1000),
+hist(simulate_means(sample_space, 1000),
      main = "Sampling Distribution of Dice Roll Means (n = 30), 1000 Simulations",
      col = "lightcoral", breaks = 30, 
      xlab = "Sample Mean", ylab = "Frequency")
@@ -164,7 +157,7 @@ hist(simulate_means(population, 1000),
 10000:
 
 ```{r}
-hist(simulate_means(population, 10000),
+hist(simulate_means(sample_space, 10000),
      main = "Sampling Distribution of Dice Roll Means (n = 30),  10000 Simulations",
      col = "gold", breaks = 40, 
      xlab = "Sample Mean", ylab = "Frequency")
@@ -175,22 +168,22 @@ Now, let us look at all of them together:
 ```{r}
 par(mfrow = c(2, 2))  # Set up 2x2 plotting grid
 
-hist(simulate_means(population, 5),
+hist(simulate_means(sample_space, 5),
      main = "Distribution of Sample Means (10 Simulations)", 
      col = "lightblue", breaks = 30, 
      xlab = "Sample Mean", ylab = "Frequency")
 
-hist(simulate_means(population, 100),
+hist(simulate_means(sample_space, 100),
      main = "Distribution of Sample Means (100 Simulations)", 
      col = "lightgreen", breaks = 30, 
      xlab = "Sample Mean", ylab = "Frequency")
 
-hist(simulate_means(population, 1000),
+hist(simulate_means(sample_space, 1000),
      main = "Distribution of Sample Means (1000 Simulations)", 
      col = "lightcoral", breaks = 30, 
      xlab = "Sample Mean", ylab = "Frequency")
 
-hist(simulate_means(population, 10000),
+hist(simulate_means(sample_space, 10000),
      main = "Distribution of Sample Means (10000 Simulations)", 
      col = "gold", breaks = 30, 
      xlab = "Sample Mean", ylab = "Frequency")
@@ -228,7 +221,7 @@ The normal distribution is the most common distribution in our world. We can see
 Let's simulate the heights of 200 university students. Use `rnorm()` to generate the data and call it 'heights'. For the parameters use 170cm as the mean, 10cm as the standard deviation and n = 200. Then look at the first values using `head()`.
 
 ```{r}
-# your code goes here
+heights <- rnorm(n=200, mean=170, sd = 10)
 ```
 
 
@@ -256,7 +249,8 @@ Bernoulli Distribution: A Bernoulli distribution has only two possible outcomes,
 Imagine you play one round of black-jack with a probability of 0.5 for success. Let's draw a random probability of you betting on the right color.
 
 ```{r}
-rbinom(1, size=1, prob=0.5)  # R uses binomial with size=1 for Bernoulli 
+rbinom(1, size=1, prob=0.5) 
+
 ```
 
 
@@ -287,7 +281,8 @@ Attention: In `rbinom(n, size, prob)`, the size parameter = number of trials, pr
 In the exercise before, those 10 people only came to one test center, but in real life there were 1000 test centers all over London. So, we change the number of test centers from 1 to 1000 and run the same again. Then use `hist()`to plot the histogram of the distribution.
 
 ```{r}
-# your code goes here
+covid <- rbinom(n=1000,size=10, p=0.9)
+hist(covid)
 ```
 
 
@@ -307,7 +302,13 @@ Use these variables as parameters in the `rbinom()` function to simulate free th
 Store the results in a new object called free_throws, and print the first few values using `head()`.
 
 ```{r}
-# your code goes here
+games <- 50
+shots_per_game <- 10
+success_rate <- 0.7
+
+
+free_throws <- rbinom(games, shots_per_game, success_rate)
+hist(free_throws)
 ```
 
 
@@ -321,7 +322,9 @@ Step 2: Create a new data frame called ft_data with two columns:
 Use the data.frame() function and assign the result to ft_data.
 
 ```{r}
-# your code goes here
+ft_data <- data.frame(game = 1:games, makes =free_throws)
+
+head(ft_data)
 ```
 
 
@@ -422,21 +425,27 @@ Use ggplot() to plot the simulated dataset called 'plot_data'. Create a scatter 
 You'll need to use aes() inside ggplot() to map variables to aesthetics.
 
 ```{r}
-# your code goes here
+simple_plot2 <- ggplot(data=plot_dta, aes(x=X, y=Y, color = Z))+
+geom_point(alpha=0.75)
+
+simple_plot2
 ```
 
 
 We will add another layer using geom_smooth() to visualize trends in the data. By default, geom_smooth() fits a smooth curve using LOESS, but we can also specify a linear model to plot a straight trend line across the data points using `method = lm`. In our case we want t specify a linear model. Call the new object simple_plot2_line.
 
 ```{r}
-# your code goes here
+simple_plot2_line <- simple_plot2 +
+geom_smooth(method="lm")
+
+simple_plot2_line
 ```
 
 
 Now we will add a theme, a title and change the X and Y axis labels:
 
 ```{r}
-
+simple_plot2_line + labs(title="Relationship between X and Y based on Group Z") + theme_bw()
 ```
 
 
@@ -451,7 +460,7 @@ Use `np.random.binomial()`to simulate 1000 games with 10 throws and a probabilit
 ```{python}
 import numpy as np
 
-# your code goes here
+samples = np.random.binomial(n=10, p=0.6, size=1000)
 
 ```
 
