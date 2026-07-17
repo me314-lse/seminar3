@@ -1,0 +1,506 @@
+---
+title: "Seminar 3: Introduction to Data II- Solution"
+subtitle: "LSE ME314: Introduction to Data Science and Machine Learning"
+date-modified: "15 July 2026"
+toc: true
+format: html
+execute:
+  echo: true
+  eval: true
+---
+
+## Plan for Today:
+
+We will learn to **simulate data** that looks like real-world phenomena, then **visualize** it to understand patterns. Think of this as becoming a "data generator" where you'll create fake datasets that behave like real ones.
+
+----
+
+### Set Up:
+
+Run the code chunk below to install (if missing) and load the ggplot2 package. If it needs to be installed, you will be asked to select a CRAN mirror which should pop up as a separate window or below in your R terminal. Select the one in UK:London.
+
+```{r, warning=FALSE, message=FALSE}
+# load packages
+package_check <- function(need = c()) {
+  have <- need %in% rownames(installed.packages()) # checks packages you have
+  if (any(!have)) {
+    install.packages(need[!have])
+  } # install missing packages
+  invisible(lapply(need, library, character.only = TRUE))
+}
+
+required_packages <- c(
+  "ggplot2" # for plotting
+)
+package_check(required_packages)
+
+set.seed(42) # For reproducible results
+```
+
+
+## Part I: Probability Distributions
+
+What is a **probability distribution**?
+
+A probability distribution is a mathematical function that describes the likelihood of different outcomes for a random variable. In other words, it tells us how probable it is to observe particular values.
+
+To make this more tangible, let’s consider a few real-life examples:
+
+- The height of university students
+
+- The grades received on a final exam
+
+- The number of heads in a series of coin tosses
+
+Each of these can be modeled with a different type of probability distribution.
+
+Before we can fully understand how data behaves in practice, we need two foundational ideas: the **Law of Large Numbers** and the **Central Limit Theorem**. Rather than starting with the definitions, let's discover them with data first.
+
+### Warm-up question
+
+If you roll a fair six-sided die once, what value do you expect to get, on average, across many people's rolls? What if you roll it 1,000 times and average those?
+
+
+#### 1. Exercise: Is Dan's die actually fair?
+
+In the lecture we created some data based on rolling Dan's six-sided dice. Ingest that data (`data/dice_rolls.csv`) into `R` as an object and call it `dice_rolls` (make sure to use the correct separator `sep = ""`), and create a new object called `mean_roll` using (`mean(as.matrix(dice_rolls))`). Test whether the dice are "fair" (does the mean of all the rolls approximately equal the expected value of a uniform distribution with a = 1 and b = 6?).
+
+```{r}
+# read the dice roll data (check.names = FALSE keeps the spaces in the column names)
+dice_rolls <- read.csv("data/dice_rolls.csv", sep = ";")
+
+head(dice_rolls)
+
+
+# mean of all rolls (na.rm = TRUE handles one missing roll)
+mean_roll <- mean(as.matrix(dice_rolls), na.rm = TRUE)
+mean_roll
+
+# expected value of a uniform distribution with a = 1 and b = 6
+(1 + 6) / 2
+```
+
+The mean of all the rolls is about `r round(mean_roll, 2)`, very close to the expected value $(a + b) / 2 = 3.5$. This is your first look at the **Law of Large Numbers**: as the sample size increases, the sample mean converges toward the true population mean. That's why we trust averages more when they're based on large samples — and why "fair" doesn't mean every roll is a 3 or 4, it means the *long-run average* settles near 3.5.
+
+
+### From single rolls to sampling distributions
+
+So far we've looked at individual rolls. Now let's ask a different question: if we repeatedly took *small samples* of rolls and averaged each sample, what would the distribution of those averages look like? To do that calculate the mean of each row from the `dice_rolls`data using `rowMeans()` and call the new object `sample_means`.
+
+**Before you run the code below**, predict: do you think the histogram of sample means (each based on only 5 rolls) will look like a smooth bell curve, or something rougher and more irregular? Write your guess as a comment.
+
+#### 2. Exercise: Sampling distribution with n = 5
+
+```{r}
+# your prediction: ___
+
+# row-wise means over the five rolls (na.rm = TRUE handles one missing roll)
+sample_means <- rowMeans(dice_rolls, na.rm = TRUE)
+sample_means
+
+```
+
+```{r}
+library(ggplot2)
+
+ggplot(data.frame(sample_means), aes(x = sample_means)) +
+  geom_histogram(bins = 15, fill = "steelblue", color = "white") +
+  labs(
+    title = "Distribution of Sample Means (n = 5)",
+    x = "Sample Mean",
+    y = "Count"
+  ) +
+  theme_minimal()
+```
+
+Was your guess right? With only $n = 5$ rolls per sample, the distribution is usually still fairly rough and far from the smooth bell shape the Central Limit Theorem promises.
+
+**Predict again:** if we increase each sample from 5 rolls to 35 rolls, what do you expect to happen to the shape of this histogram?
+
+```{r}
+set.seed(42)
+
+# simulate 30 additional rolls per row, drawn i.i.d. from a uniform distribution on 1:6
+extra_rolls <- replicate(30, sample(1:6, nrow(dice_rolls), replace = TRUE))
+colnames(extra_rolls) <- paste("Roll", 6:35)
+rolls_extended <- cbind(dice_rolls, extra_rolls)
+
+# row-wise means, now over all 35 rolls per sample
+sample_means_35 <- rowMeans(rolls_extended, na.rm = TRUE)
+
+ggplot(data.frame(sample_means_35), aes(x = sample_means_35)) +
+  geom_histogram(
+    aes(y = after_stat(density)),
+    bins = 15,
+    fill = "steelblue",
+    color = "white"
+  ) +
+  stat_function(
+    fun = dnorm,
+    args = list(mean = mean(sample_means_35), sd = sd(sample_means_35)),
+    color = "firebrick",
+    linewidth = 1
+  ) +
+  labs(
+    title = "Distribution of Sample Means (n = 35)",
+    x = "Sample Mean",
+    y = "Density"
+  ) +
+  theme_minimal()
+```
+
+The red curve is a theoretical normal distribution fitted to your sample means — notice how closely the histogram now tracks it. This is the **Central Limit Theorem** in action: with a large enough sample size, the sampling distribution of the mean becomes approximately normal, regardless of the shape of the original data (here, a uniform distribution over 1–6, which isn't normal at all).
+
+#### 3. Exercise: Isolating what actually drives the Central Limit Theorem
+
+Let's discard the real dice data and simulate directly, so we can control two things separately: **how many samples we take** (`n_sims`) and **how large each sample is** (`sample_size`). This distinction is the single most common point of confusion with the CLT, so let's make it visual.
+
+```{r}
+set.seed(124)
+
+sample_space <- 1:6
+
+simulate_means <- function(pop, n_sims, sample_size = 30) {
+  replicate(n_sims, mean(sample(pop, sample_size, replace = TRUE)))
+}
+```
+
+**Before running this next chunk**, predict: as you move *across a row* (same `n_sims`, increasing `sample_size`), what changes about the histograms — do they get taller, narrower, smoother, or shift position? Now predict what happens as you move *down a column* (same `sample_size`, increasing `n_sims`).
+
+```{r}
+#| fig-width: 10
+#| fig-height: 10
+set.seed(124)
+
+n_sims_values <- c(5, 100, 1000, 10000)
+sample_size_values <- c(5, 10, 30, 100)
+
+par(mfrow = c(4, 4), mar = c(2, 2, 2, 1))
+
+for (n_sims in n_sims_values) {
+  for (sample_size in sample_size_values) {
+    hist(
+      simulate_means(sample_space, n_sims, sample_size),
+      main = paste0(n_sims, " sims, n = ", sample_size),
+      col = "lightblue",
+      breaks = 30,
+      xlab = "",
+      ylab = ""
+    )
+  }
+}
+
+par(mfrow = c(1, 1))
+```
+
+#### 4. Exercise: Read the grid
+
+Answer these directly using the grid above:
+
+- **Look across a single row** (fixed `n_sims`, varying `sample_size`). What happens to the *spread* of the histograms as `sample_size` increases? Why does that make sense given what a sample mean represents?
+- **Look down a single column** (fixed `sample_size`, varying `n_sims`). Does the spread change? What *does* change as `n_sims` increases?
+- Based on your two answers above, which of the two parameters — `n_sims` or `sample_size` — controls how *precise* your estimate of the population mean is? Which one just helps you see the shape of the sampling distribution more clearly?
+
+The larger the sample size, the smaller the spread of the sample means: with more rolls per sample, each sample mean tends to fall closer to the population mean of 3.5. Increasing the number of simulations does not change this spread — it only makes the shape of the sampling distribution easier to see, since you're drawing more sample means to plot.
+
+### Why this matters beyond dice
+
+Think about a real opinion poll. Each poll is one "sample" of people, and the poll's reported percentage is a sample mean (roughly). 
+
+**Synthesis question:** Based on the grid above, if you wanted a polling organization's estimate to be more *precise* (less likely to be far from the true population value), should they survey more people per poll, or run the same poll more times? Which parameter in the simulation does that correspond to?
+
+This is exactly why estimates based on larger samples are more trustworthy: a poll or experiment with a large sample size produces an average that is likely to land close to the true population value — not because you ran it more times, but because each individual estimate is more stable.
+
+### Continuous Distributions
+
+#### Gaussian Normal Distribution
+
+The normal distribution is the most common distribution in our world. We can see it in heights, test scores, measurement errors. It's symmetric and bell-shaped.
+
+- Key Parameters:
+  - Mean: $\mu$
+  - Variance: $\sigma^2$
+- Standard Normal Distribution has a $\mu$ = 0 and a $\sigma^2$= 1.
+
+#### 5. Exercise
+
+Let's simulate the heights of 200 university students. Use `rnorm()` to generate the data and call it 'heights'. For the parameters use 170cm as the mean, 10cm as the standard deviation and n = 200. Then look at the first values using `head()`.
+
+```{r}
+set.seed(42)
+
+heights <- rnorm(n = 200, mean = 170, sd = 10)
+
+head(heights)
+```
+
+Let us inspect the summary statistics: what do they show us?
+
+```{r}
+# Basic statistics
+summary(heights)
+```
+
+
+Now, let us plot the distribution of values using a histogram.
+
+```{r}
+hist(heights)
+```
+
+**Predict before running the next chunk:** if we instead simulated heights with `sd = 3` (a much more uniform population) and `sd = 20` (a much more variable one), how would the three histograms compare? Would they be centered differently, or just differently spread out?
+
+```{r}
+set.seed(42)
+
+heights_narrow <- rnorm(200, mean = 170, sd = 3)
+heights_wide <- rnorm(200, mean = 170, sd = 20)
+
+heights_compare <- data.frame(
+  value = c(heights, heights_narrow, heights_wide),
+  sd_group = rep(c("sd = 10", "sd = 3", "sd = 20"), each = 200)
+)
+
+ggplot(heights_compare, aes(x = value, fill = sd_group)) +
+  geom_histogram(
+    position = "identity",
+    alpha = 0.5,
+    bins = 20,
+    color = "white"
+  ) +
+  labs(
+    title = "Effect of Standard Deviation on Spread",
+    x = "Height (cm)",
+    y = "Count",
+    fill = ""
+  ) +
+  theme_minimal()
+
+```
+
+All three are centered around 170, changing `sd` doesn't move the distribution, it only changes how tightly the values cluster around the mean. This is the difference between $\mu$ (location) and $\sigma$ (spread), and it's worth being able to tell them apart at a glance.
+
+### Discrete Distributions
+
+We'll use one running example for the rest of this section: **a basketball player who makes 70% of their free throws.**
+
+#### Bernoulli Distribution
+
+A Bernoulli distribution has only two possible outcomes, 1 (success) and 0 (failure),from a single trial. It's a special case of the binomial distribution where there's only one trial.
+
+- Parameter: p (probability of success)
+
+#### 6. Exercise: One free throw
+
+```{r}
+rbinom(1, size = 1, prob = 0.7) # one free throw: 1 = made it, 0 = missed
+```
+
+Run this chunk a few times (or use different seeds). Since $p = 0.7$, roughly what fraction of the time would you expect to see a 1?
+
+#### Binomial Distribution
+
+The binomial distribution models a series of independent Bernoulli trials, here, a whole game's worth of free throws — where each trial is a success (make) with probability $p$ or a failure (miss) with probability $1-p$.
+
+- $n$ independent Bernoulli trials
+- Counts how many successes occur in those $n$ trials
+- Parameters: $n$ (number of trials), $p$ (probability of success)
+
+#### 7. Exercise: One game of free throws
+
+Our player takes 10 free throws in a game. Which parameter in the `rbinom()`function do you have to change? 
+Create an object called `one_game`from the new `rbinom()`call and print the results. 
+
+```{r}
+one_game <- rbinom(1, size = 10, prob = 0.7)
+print(one_game)
+```
+
+::: {.callout-note}
+Attention: in `rbinom(n, size, prob)`, `size` = number of trials per draw, `prob` = probability of success, and `n` = how many separate draws you want. So a single game of 10 free throws with a 70% success rate is `rbinom(n = 1, size = 10, prob = 0.7)`.
+:::
+
+**Before running the next chunk**, predict: if we simulate 1,000 separate games instead of just 1, and plot a histogram of the results, what shape do you expect? Would most games cluster around a particular number of makes, or be spread evenly across 0–10?
+
+#### 8. Exercise: One game vs. a thousand games
+
+Now create a second object called `thousand_games` where you simulate 1000 separate games. Then you will create a data frame with `data.frame()` out of it calling the variable from your `thousand_games` object `makes`. Then, we plot the distribution.
+
+```{r}
+set.seed(42)
+
+thousand_games <- rbinom(1000, size = 10, prob = 0.7)
+
+games_compare <- data.frame(makes = thousand_games)
+
+ggplot(games_compare, aes(x = makes)) +
+  geom_histogram(binwidth = 1, fill = "steelblue", color = "white") +
+  scale_x_continuous(breaks = 0:10) +
+  labs(
+    title = "Free Throws Made per Game (1,000 simulated games)",
+    subtitle = paste("A single simulated game gave:", one_game, "makes"),
+    x = "Makes out of 10",
+    y = "Number of Games"
+  ) +
+  theme_minimal()
+```
+
+With only one game, you get a single number without a shape. With 1,000 games, a clear pattern emerges: most games cluster around 7 makes (consistent with $p = 0.7 \times 10$ trials), with fewer games far above or below that. This is the same idea as the "1 test center vs. 1,000 test centers" comparison from a diagnostic test: a single trial-run tells you almost nothing about the underlying distribution; many repetitions reveal its actual shape.
+
+#### 9. Exercise: Organizing the results
+
+Now let's simulate a realistic, more moderate number of games, 50,  and store the results properly instead of just eyeballing a histogram.
+
+Step 1: Create the following variables:
+
+- `games`: the number of games played
+- `shots_per_game`: how many free throws are taken per game
+- `success_rate`: the probability of making a free throw
+
+Use these as parameters in `rbinom()` to simulate free throw outcomes, store the results in `free_throws`, and print the first few values with `head()`.
+
+```{r}
+set.seed(42)
+
+games <- 50
+shots_per_game <- 10
+success_rate <- 0.7
+
+free_throws <- rbinom(n = games, size = shots_per_game, prob = success_rate)
+
+head(free_throws)
+```
+
+Step 2: Create a data frame called `ft_data` with two columns:
+
+- `game`: a sequence from 1 to the number of games
+- `makes`: the number of successful free throws in each game (from `free_throws`)
+
+```{r}
+ft_data <- data.frame(
+  game = 1:games,
+  makes = free_throws
+)
+
+head(ft_data)
+```
+
+**Try it yourself:** change `success_rate` to `0.5` and re-run both chunks. Does `ft_data$makes` shift lower, as you'd expect? By roughly how much, and does that match what you'd calculate by hand ($n \times p$)?
+
+
+## Part II: Data Visualization
+
+#### 10. Exercise
+
+Now, use the data you generated for exercise 9 and plot it using ggplot: We will first generate a simple barplot using geom_bar().
+
+```{r}
+# Bar plot of results
+simple_plot <- ggplot(data = ft_data, aes(x = as.factor(makes))) +
+  geom_bar()
+
+simple_plot
+```
+
+Let us add another mapping: we will change the color of the bars and their intensity using `fill` and `alpha`.
+
+```{r}
+# now let us add some aesthetics: we will change the color of the bars and their intensity
+
+simple_plot_colors <- ggplot(data = ft_data, aes(x = as.factor(makes))) +
+  geom_bar(fill = "orange", alpha = 0.7)
+
+simple_plot_colors
+```
+
+
+Now we can add a theme, a title and change the X and Y axis labels:
+
+```{r}
+# now we can add a title and change the X and Y axis labels:
+
+simple_plot_colors +
+  labs(
+    title = "Free Throws Made per Game (10 attempts, 70% shooter)",
+    x = "Number Made",
+    y = "Number of Games"
+  ) +
+  theme_bw()
+```
+
+Now, we will generate some continuous data for a dataset and plot it.
+
+```{r}
+## Generate some data:
+set.seed(123)
+
+# Simulate continuous variable
+X <- rnorm(500, mean = 0, sd = 1)
+
+# Simulate group variable (3 categories)
+Z <- factor(sample(1:3, 500, replace = TRUE))
+
+# Generate Y with group-specific slopes
+Y <- ifelse(
+  Z == 1,
+  0.2 * X + rnorm(500, 0, 0.2),
+  ifelse(Z == 2, 0.4 * X + rnorm(500, 0, 0.2), 0.6 * X + rnorm(500, 0, 0.2))
+)
+
+# Combine into data frame
+plot_dta <- data.frame(X = X, Y = Y, Z = Z)
+
+```
+
+
+#### 11. Exercise
+
+Use ggplot() to plot the simulated dataset called 'plot_dta'. Create a scatter plot using geom_point() and assign the plot to a new object called simple_plot_2. Map the variable Z to the color aesthetic. Set the transparency of the points using alpha = 0.75
+
+You'll need to use aes() inside ggplot() to map variables to aesthetics.
+
+```{r}
+simple_plot_2 <- ggplot(plot_dta, aes(x = X, y = Y, colour = Z)) +
+  geom_point(alpha = 0.75)
+simple_plot_2
+```
+
+We will add another layer using geom_smooth() to visualize trends in the data. By default, geom_smooth() fits a smooth curve using LOESS, but we can also specify a linear model to plot a straight trend line across the data points using `method = lm`. In our case we want to specify a linear model. Call the new object simple_plot_colors2_line.
+
+```{r}
+simple_plot_colors2_line <- ggplot(plot_dta, aes(x = X, y = Y, colour = Z)) +
+  geom_point(alpha = 0.75) +
+  geom_smooth(method = lm, se = FALSE)
+
+simple_plot_colors2_line
+```
+
+
+Now we will add a theme, a title and change the X and Y axis labels:
+
+```{r, fig.width=7, fig.height=5, warning=FALSE, message=FALSE}
+## Now adjust design to make the plot look nicer:
+simple_plot_colors2_line +
+  theme_minimal() +
+  labs(
+    title = "Variation in X and Y",
+    subtitle = "Different relationships shown by level of Z",
+    x = "X value",
+    y = "Y value"
+  )
+```
+
+
+## By the end of this seminar you should be able to…
+
+- Generate your own data using different types of probability distributions (e.g. normal, binomial, uniform)
+
+- Simulate random variation and understand how it affects data
+
+- Explain key concepts like the Law of Large Numbers and the Central Limit Theorem
+
+- Visualize distributions and simulations using ggplot2 in R
+
+- Interpret histograms, density plots, and sampling distributions
+
+- Understand how sample size affects the reliability of estimates
